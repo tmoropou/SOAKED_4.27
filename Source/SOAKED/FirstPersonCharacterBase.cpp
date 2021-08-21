@@ -18,6 +18,8 @@ AFirstPersonCharacterBase::AFirstPersonCharacterBase()
     StandingCapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
     FirstPersonCamera->SetRelativeLocation(CameraOffset);
     StandingCameraZOffset = FirstPersonCamera->GetRelativeLocation().Z;
+
+    CurrentMovementState = MovementState::Walking;
 }
 
 // Called when the game starts or when spawned
@@ -42,6 +44,27 @@ void AFirstPersonCharacterBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
     AFirstPersonCharacterBase::CanStand();
+
+    if (bSliding)
+    {
+        // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Sliding"));
+        FVector FloorNormal = GetCharacterMovement()->CurrentFloor.HitResult.Normal;
+        GetCharacterMovement()->AddForce(AFirstPersonCharacterBase::CalculateFloorInfluence(FloorNormal));
+
+        if (GetVelocity().Size() > SprintSpeed) 
+        {
+            FVector MyVec = GetVelocity();
+            MyVec.Normalize();
+            MyVec = MyVec * SprintSpeed;
+            GetCharacterMovement()->Velocity = MyVec;
+        }
+
+        if (GetVelocity().Size() < CrouchSpeed)
+        {
+            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Too Slow!"));
+            AFirstPersonCharacterBase::ResolveMovementState();
+        }
+    }
 }
 
 // Called to bind functionality to input
@@ -126,9 +149,28 @@ void AFirstPersonCharacterBase::StopHandleJump()
 // Begin Crouching
 void AFirstPersonCharacterBase::Crouch()
 {
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Crouching"));
-    CurrentMovementState = MovementState::Crouching;
-    AFirstPersonCharacterBase::TempCrouch();
+
+    switch (CurrentMovementState)
+    {
+    case MovementState::Walking:
+        AFirstPersonCharacterBase::SetMovementState(MovementState::Crouching);
+        break;
+    case MovementState::Sprinting:
+        AFirstPersonCharacterBase::SetMovementState(MovementState::Sliding);
+        break;
+    case MovementState::Crouching:
+        if (AFirstPersonCharacterBase::CanStand())
+        {
+            bCrouchKeyDown = false;
+            AFirstPersonCharacterBase::EndCrouch();
+            AFirstPersonCharacterBase::ResolveMovementState();
+            CurrentMovementState = MovementState::Walking;
+        }
+        break;
+    }
+
+    // CurrentMovementState = MovementState::Crouching;
+    // AFirstPersonCharacterBase::TempCrouch();
 }
 
 // Handle start Sprint when sprint key pressed
@@ -142,7 +184,11 @@ void AFirstPersonCharacterBase::BeginSprint()
         AFirstPersonCharacterBase::SetMovementState(MovementState::Sprinting);
         break;
     case MovementState::Crouching:
-        AFirstPersonCharacterBase::SetMovementState(MovementState::Sprinting);
+        if (AFirstPersonCharacterBase::CanStand())
+        {
+            AFirstPersonCharacterBase::EndCrouch();
+            AFirstPersonCharacterBase::SetMovementState(MovementState::Sprinting);
+        }
         break;
     }
 }
@@ -155,7 +201,6 @@ void AFirstPersonCharacterBase::EndSprint()
     switch (CurrentMovementState)
     {
     case MovementState::Sprinting:
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("RESOLVE"));
         AFirstPersonCharacterBase::ResolveMovementState();
         break;
     }
@@ -164,7 +209,6 @@ void AFirstPersonCharacterBase::EndSprint()
 // Set the movement state after a change of movement state
 void AFirstPersonCharacterBase::SetMovementState(TEnumAsByte<MovementState> NewMovementState)
 {
-    GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("SetMovementMode"));
     if (NewMovementState != CurrentMovementState)
     {
         PreviousMovementState = CurrentMovementState;
@@ -183,6 +227,7 @@ void AFirstPersonCharacterBase::SetMovementState(TEnumAsByte<MovementState> NewM
             AFirstPersonCharacterBase::BeginCrouch();
             break;
         case MovementState::Sliding:
+            AFirstPersonCharacterBase::BeginCameraTilt();
             AFirstPersonCharacterBase::BeginCrouch();
             AFirstPersonCharacterBase::BeginSlide();
             break;
@@ -213,14 +258,15 @@ void AFirstPersonCharacterBase::OnMovementStateChange(TEnumAsByte<MovementState>
     switch (CurrentMovementState)
     {
     case MovementState::Sliding:
+        bSliding = true;
         // While sliding
+        AFirstPersonCharacterBase::BeginCameraTilt();
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Sliding"));
         GetCharacterMovement()->GroundFriction = 8.0f;
         GetCharacterMovement()->BrakingDecelerationWalking = 2048.0f;
         AFirstPersonCharacterBase::EndSlide();
-
         // End Slide reset slide variables
-        GetCharacterMovement()->Velocity = ((GetActorForwardVector() * SprintSpeed) * SlideMultiplier);
-
+        GetCharacterMovement()->Velocity = ((GetActorForwardVector() * SprintSpeed));
         GetCharacterMovement()->GroundFriction = 0.0f;
         GetCharacterMovement()->BrakingDecelerationWalking = 300.0f;
         break;
@@ -230,14 +276,48 @@ void AFirstPersonCharacterBase::OnMovementStateChange(TEnumAsByte<MovementState>
 // Check if player can stand and resolve movement
 void AFirstPersonCharacterBase::ResolveMovementState()
 {
-    if (!AFirstPersonCharacterBase::CanStand())
+    switch (CurrentMovementState)
     {
-        AFirstPersonCharacterBase::SetMovementState(MovementState::Walking);
+        case MovementState::Walking:
+            if (AFirstPersonCharacterBase::CanStand())
+            {
+                AFirstPersonCharacterBase::SetMovementState(MovementState::Walking);
+            }
+            else
+            {
+                AFirstPersonCharacterBase::SetMovementState(MovementState::Crouching);
+            }
+            break;
+
+        case MovementState::Sprinting:
+            if (AFirstPersonCharacterBase::CanStand())
+            {
+                AFirstPersonCharacterBase::SetMovementState(MovementState::Walking);
+            }
+            else
+            {
+                AFirstPersonCharacterBase::SetMovementState(MovementState::Crouching);
+            }
+            break;
+
+        case MovementState::Crouching:
+            if (AFirstPersonCharacterBase::CanStand())
+            {
+                AFirstPersonCharacterBase::SetMovementState(MovementState::Walking);
+            }
+            else
+            {
+                AFirstPersonCharacterBase::SetMovementState(MovementState::Crouching);
+            }
+            break;
+
+        case MovementState::Sliding:
+            AFirstPersonCharacterBase::EndSlide();
+            AFirstPersonCharacterBase::SetMovementState(MovementState::Crouching);
+            bSliding = false;
+            break;
     }
-    else
-    {
-        AFirstPersonCharacterBase::SetMovementState(MovementState::Crouching);
-    }
+    
 }
 
 bool AFirstPersonCharacterBase::CanStand()
@@ -257,11 +337,36 @@ bool AFirstPersonCharacterBase::CanStand()
     FVector End = FVector(Start.X, Start.Y, (StandingCapsuleHalfHeight * 2.0f) + Start.Z);
 
     FCollisionQueryParams TraceParams;
-    return GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, TraceParams);
+    return !GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, TraceParams);
 
     // DrawDebugLine(GetWorld(), Start, End, FColor::Blue, false, 5.0f);
 
     // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Draw!"));
 }
 
+FVector AFirstPersonCharacterBase::CalculateFloorInfluence(FVector FloorNormal)
+{
+    FVector VectorUp = FVector(0.0f, 0.0f, 1.0f);
+    FVector FinalVector = FVector(0.0f, 0.0f, 0.0f);
+    float SecondMultiple = 0.0f;
+    if (FloorNormal == VectorUp)
+    {
+        return FVector(0.0f, 0.0f, 0.0f);
+    } 
+    else
+    {
+        // Handle Final vector calculations with the floor normal
+        FinalVector = FVector::CrossProduct(FloorNormal, VectorUp);
+        FinalVector = FVector::CrossProduct(FloorNormal, FinalVector);
+        FinalVector.Normalize();
 
+        // Handle the multiplier with the floor normal to be multiplied with the FinalVector
+        SecondMultiple = FVector::DotProduct(FloorNormal, VectorUp);
+        SecondMultiple = 1.0f - SecondMultiple;
+        SecondMultiple = FMath::Clamp(SecondMultiple, 0.0f, 1.0f);
+        SecondMultiple = SecondMultiple * 500000.0f;
+
+        FinalVector = FinalVector * SecondMultiple;
+    }
+    return FVector();
+}

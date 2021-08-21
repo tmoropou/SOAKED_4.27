@@ -8,6 +8,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Blueprint/UserWidget.h"
+#include "Math/Vector.h"
+#include "Math/UnrealMathUtility.h"
 #include "DrawDebugHelpers.h"
 #include "MovmentStateEnum.h"
 #include "FirstPersonCharacterBase.generated.h"
@@ -36,9 +38,6 @@ protected:
     UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MyCharacter(C++)")
         float CrouchSpeed = 150.0f;
 
-    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MyCharacter(C++)")
-        float SlideMultiplier = 0.0f;
-
     UPROPERTY(EditAnywhere, Category = "HUD(C++)")
         TSubclassOf<UUserWidget> MainHudClass;
 
@@ -57,6 +56,9 @@ protected:
 
     UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CharacterBools(C++)")
         bool bSprintKeyDown = false;
+
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CharacterBools(C++)")
+        bool bSliding = false;
 
     void MoveForward(float Axis);
     void MoveRight(float Axis);
@@ -93,6 +95,8 @@ protected:
     UFUNCTION(BlueprintImplementableEvent, Category = "C++ Functions")
         void EndCameraTilt();
 
+    UFUNCTION()
+        FVector CalculateFloorInfluence(FVector FloorNormal);
 
 public:
 	// Sets default values for this character's properties
