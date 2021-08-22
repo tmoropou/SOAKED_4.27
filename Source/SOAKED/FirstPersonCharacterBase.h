@@ -58,7 +58,7 @@ protected:
         bool bSprintKeyDown = false;
 
     UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CharacterBools(C++)")
-        bool bSliding = false;
+        bool bClimbingLadder = false;
 
     void MoveForward(float Axis);
     void MoveRight(float Axis);
@@ -97,6 +97,11 @@ protected:
 
     UFUNCTION()
         FVector CalculateFloorInfluence(FVector FloorNormal);
+
+    UFUNCTION()
+        void SlideTimer();
+
+    FTimerHandle SlideTimerHandle;
 
 public:
 	// Sets default values for this character's properties

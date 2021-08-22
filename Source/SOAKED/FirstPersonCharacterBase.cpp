@@ -44,27 +44,6 @@ void AFirstPersonCharacterBase::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
     AFirstPersonCharacterBase::CanStand();
-
-    if (bSliding)
-    {
-        // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Sliding"));
-        FVector FloorNormal = GetCharacterMovement()->CurrentFloor.HitResult.Normal;
-        GetCharacterMovement()->AddForce(AFirstPersonCharacterBase::CalculateFloorInfluence(FloorNormal));
-
-        if (GetVelocity().Size() > SprintSpeed) 
-        {
-            FVector MyVec = GetVelocity();
-            MyVec.Normalize();
-            MyVec = MyVec * SprintSpeed;
-            GetCharacterMovement()->Velocity = MyVec;
-        }
-
-        if (GetVelocity().Size() < CrouchSpeed)
-        {
-            GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Too Slow!"));
-            AFirstPersonCharacterBase::ResolveMovementState();
-        }
-    }
 }
 
 // Called to bind functionality to input
@@ -96,17 +75,33 @@ void AFirstPersonCharacterBase::MoveForward(float Axis)
     const FRotator YawRotation(0, Rotation.Yaw, 0);
 
     const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-    AddMovementInput(Direction, Axis);
+    const FVector Direction2 = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Z);
+    if (GetCharacterMovement()->IsFlying())
+    {
+        AddMovementInput(Direction2, Axis);
+    }
+    else
+    {
+        AddMovementInput(Direction, Axis);
+    }
+
 }
 
 // Handle logic to move the player side to side
 void AFirstPersonCharacterBase::MoveRight(float Axis)
 {
-    const FRotator Rotation = Controller->GetControlRotation();
-    const FRotator YawRotation(0, Rotation.Yaw, 0);
+    if (GetCharacterMovement()->IsFlying())
+    {
 
-    const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-    AddMovementInput(Direction, Axis);
+    }
+    else
+    {
+        const FRotator Rotation = Controller->GetControlRotation();
+        const FRotator YawRotation(0, Rotation.Yaw, 0);
+
+        const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+        AddMovementInput(Direction, Axis);
+    }
 }
 
 // When the jump button is initially pressed
@@ -168,9 +163,6 @@ void AFirstPersonCharacterBase::Crouch()
         }
         break;
     }
-
-    // CurrentMovementState = MovementState::Crouching;
-    // AFirstPersonCharacterBase::TempCrouch();
 }
 
 // Handle start Sprint when sprint key pressed
@@ -255,17 +247,23 @@ void AFirstPersonCharacterBase::OnMovementStateChange(TEnumAsByte<MovementState>
         break;
     }
 
-    switch (CurrentMovementState)
+    // End slide
+    switch (PreviousMovementState)
     {
     case MovementState::Sliding:
-        bSliding = true;
-        // While sliding
-        AFirstPersonCharacterBase::BeginCameraTilt();
+        GetWorldTimerManager().ClearTimer(SlideTimerHandle);
         GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Sliding"));
         GetCharacterMovement()->GroundFriction = 8.0f;
         GetCharacterMovement()->BrakingDecelerationWalking = 2048.0f;
-        AFirstPersonCharacterBase::EndSlide();
-        // End Slide reset slide variables
+        AFirstPersonCharacterBase::EndCameraTilt();
+        break;
+    }
+
+    // Start Slide
+    switch (CurrentMovementState)
+    {
+    case MovementState::Sliding:
+        GetWorldTimerManager().SetTimer(SlideTimerHandle, this, &AFirstPersonCharacterBase::SlideTimer, 0.1f, true, 0.0f);
         GetCharacterMovement()->Velocity = ((GetActorForwardVector() * SprintSpeed));
         GetCharacterMovement()->GroundFriction = 0.0f;
         GetCharacterMovement()->BrakingDecelerationWalking = 300.0f;
@@ -314,7 +312,6 @@ void AFirstPersonCharacterBase::ResolveMovementState()
         case MovementState::Sliding:
             AFirstPersonCharacterBase::EndSlide();
             AFirstPersonCharacterBase::SetMovementState(MovementState::Crouching);
-            bSliding = false;
             break;
     }
     
@@ -369,4 +366,25 @@ FVector AFirstPersonCharacterBase::CalculateFloorInfluence(FVector FloorNormal)
         FinalVector = FinalVector * SecondMultiple;
     }
     return FVector();
+}
+
+void AFirstPersonCharacterBase::SlideTimer()
+{
+    // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Sliding"));
+    FVector FloorNormal = GetCharacterMovement()->CurrentFloor.HitResult.Normal;
+    GetCharacterMovement()->AddForce(AFirstPersonCharacterBase::CalculateFloorInfluence(FloorNormal));
+
+    if (GetVelocity().Size() > SprintSpeed)
+    {
+        FVector MyVec = GetVelocity();
+        MyVec.Normalize();
+        MyVec = MyVec * SprintSpeed;
+        GetCharacterMovement()->Velocity = MyVec;
+    }
+
+    if (GetVelocity().Size() < CrouchSpeed)
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Too Slow!"));
+        AFirstPersonCharacterBase::ResolveMovementState();
+    }
 }
