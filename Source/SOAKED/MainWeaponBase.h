@@ -14,12 +14,14 @@ class SOAKED_API AMainWeaponBase : public AActor
 	GENERATED_BODY()
 
 protected:
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, meta = (ExposeOnSpawn = "true"))
+        int WaterLevel = 100;
     UPROPERTY(BlueprintReadWrite, EditAnywhere)
-    int WaterLevel = 100;
+        int MaxWaterLevel = 100;
     UPROPERTY(BlueprintReadWrite, EditAnywhere)
-    bool bCoolDown = false;
+        bool bCoolDown = false;
     UPROPERTY(BlueprintReadWrite, EditAnywhere)
-    AFirstPersonCharacterBase* PlayerRef;
+        AFirstPersonCharacterBase* PlayerRef;
 
 
 public:	
