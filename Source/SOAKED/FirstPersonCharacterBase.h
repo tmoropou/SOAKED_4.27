@@ -47,6 +47,9 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components (C++)")
         UCameraComponent* FirstPersonCamera;
 
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components (C++)")
+        USceneComponent* ClimbHeight;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enums(C++)")
         TEnumAsByte<MovementState> CurrentMovementState;
         TEnumAsByte<MovementState> PreviousMovementState;
@@ -73,6 +76,7 @@ protected:
         void OnMovementStateChange(TEnumAsByte<MovementState> InPreviousMovementState);
         void ResolveMovementState();
         bool CanStand();
+        bool LineTrace(FHitResult Hit, FVector Start, FVector End);
 
     UFUNCTION(BlueprintImplementableEvent, Category = "C++ Functions")
         void TempCrouch();
@@ -102,6 +106,11 @@ protected:
         void SlideTimer();
 
     FTimerHandle SlideTimerHandle;
+
+    UFUNCTION()
+        void ClimbTimer();
+
+    FTimerHandle ClimbTimerHandle;
 
 public:
 	// Sets default values for this character's properties

@@ -19,6 +19,8 @@ AFirstPersonCharacterBase::AFirstPersonCharacterBase()
     FirstPersonCamera->SetRelativeLocation(CameraOffset);
     StandingCameraZOffset = FirstPersonCamera->GetRelativeLocation().Z;
 
+    ClimbHeight = CreateDefaultSubobject<USceneComponent>(TEXT("Climb Height"));
+
     CurrentMovementState = MovementState::Walking;
 }
 
@@ -107,11 +109,23 @@ void AFirstPersonCharacterBase::MoveRight(float Axis)
 // When the jump button is initially pressed
 void AFirstPersonCharacterBase::StartHandleJump()
 {
+    FHitResult Hit;
+    FVector Start = FVector(GetActorLocation().Z - 100);
+    FVector End = FVector((GetActorForwardVector() * 100) + Start);
     switch (CurrentMovementState) 
     {
         case MovementState::Walking:
             break;
         case MovementState::Sprinting:
+            if (LineTrace(Hit, Start, End))
+            {
+                // GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
+                // GetWorldTimerManager().SetTimer(ClimbTimerHandle, this, &AFirstPersonCharacterBase::ClimbTimer, 0.1f, true, 0.0f);
+            }
+            else
+            {
+
+            }
             break;
         case MovementState::Crouching:
             AFirstPersonCharacterBase::SetMovementState(MovementState::Walking);
@@ -386,5 +400,29 @@ void AFirstPersonCharacterBase::SlideTimer()
     {
         GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Too Slow!"));
         AFirstPersonCharacterBase::ResolveMovementState();
+    }
+}
+
+bool AFirstPersonCharacterBase::LineTrace(FHitResult Hit, FVector Start, FVector End)
+{
+    FCollisionQueryParams TraceParams;
+    DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 10.0f);
+    return GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, TraceParams);
+}
+
+void AFirstPersonCharacterBase::ClimbTimer()
+{
+    FHitResult Hit;
+    FVector Start = FVector(GetActorLocation().Z - 100);
+    FVector End = FVector((GetActorForwardVector() * 75) + Start);
+
+    if (LineTrace(Hit, Start, End))
+    {
+
+    }
+    else 
+    {
+        // GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+        // GetWorldTimerManager().ClearTimer(ClimbTimerHandle);
     }
 }
