@@ -63,6 +63,15 @@ protected:
     UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CharacterBools(C++)")
         bool bClimbingLadder = false;
 
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CharacterBools(C++)")
+        bool bClimbing = false;
+
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "CharacterBools(C++)")
+        bool bFinishClimbing = false;
+
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "MyCharacter(C++)")
+        int ClimbIteration = 0;
+
     void MoveForward(float Axis);
     void MoveRight(float Axis);
 
@@ -111,6 +120,11 @@ protected:
         void ClimbTimer();
 
     FTimerHandle ClimbTimerHandle;
+
+    UFUNCTION()
+        void CheckClimbTimer();
+
+    FTimerHandle CheckClimbTimerHandle;
 
 public:
 	// Sets default values for this character's properties

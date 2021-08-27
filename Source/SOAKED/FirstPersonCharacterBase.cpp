@@ -20,6 +20,7 @@ AFirstPersonCharacterBase::AFirstPersonCharacterBase()
     StandingCameraZOffset = FirstPersonCamera->GetRelativeLocation().Z;
 
     ClimbHeight = CreateDefaultSubobject<USceneComponent>(TEXT("Climb Height"));
+    ClimbHeight->SetupAttachment(GetCapsuleComponent());
 
     CurrentMovementState = MovementState::Walking;
 }
@@ -36,16 +37,12 @@ void AFirstPersonCharacterBase::BeginPlay()
         MainHudRef->AddToViewport();
     }
 
-
-
 }
 
 // Called every frame
 void AFirstPersonCharacterBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-    AFirstPersonCharacterBase::CanStand();
 }
 
 // Called to bind functionality to input
@@ -109,23 +106,15 @@ void AFirstPersonCharacterBase::MoveRight(float Axis)
 // When the jump button is initially pressed
 void AFirstPersonCharacterBase::StartHandleJump()
 {
-    FHitResult Hit;
-    FVector Start = FVector(GetActorLocation().Z - 100);
-    FVector End = FVector((GetActorForwardVector() * 100) + Start);
+    ACharacter::Jump();
+
+    
     switch (CurrentMovementState) 
     {
         case MovementState::Walking:
             break;
         case MovementState::Sprinting:
-            if (LineTrace(Hit, Start, End))
-            {
-                // GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
-                // GetWorldTimerManager().SetTimer(ClimbTimerHandle, this, &AFirstPersonCharacterBase::ClimbTimer, 0.1f, true, 0.0f);
-            }
-            else
-            {
-
-            }
+            GetWorldTimerManager().SetTimer(CheckClimbTimerHandle, this, &AFirstPersonCharacterBase::CheckClimbTimer, 0.1f, true, 0.0f);
             break;
         case MovementState::Crouching:
             AFirstPersonCharacterBase::SetMovementState(MovementState::Walking);
@@ -145,7 +134,6 @@ void AFirstPersonCharacterBase::StartHandleJump()
             }
             break;
     }
-    ACharacter::Jump();
 
 }
 
@@ -413,8 +401,18 @@ bool AFirstPersonCharacterBase::LineTrace(FHitResult Hit, FVector Start, FVector
 void AFirstPersonCharacterBase::ClimbTimer()
 {
     FHitResult Hit;
-    FVector Start = FVector(GetActorLocation().Z - 100);
+    FVector Start = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z - 100);
     FVector End = FVector((GetActorForwardVector() * 75) + Start);
+
+    FHitResult Hit2;
+    FVector Start2 = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z + 90);
+    FVector End2 = FVector((GetActorForwardVector() * 75) + Start2);
+
+    if (!LineTrace(Hit2, Start2, End2))
+    {
+        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Finished Climbing"));
+        bFinishClimbing = true;
+    }
 
     if (LineTrace(Hit, Start, End))
     {
@@ -422,7 +420,44 @@ void AFirstPersonCharacterBase::ClimbTimer()
     }
     else 
     {
-        // GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
-        // GetWorldTimerManager().ClearTimer(ClimbTimerHandle);
+        bFinishClimbing = false;
+        bClimbing = false;
+        ClimbIteration = 0;
+        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+        GetWorldTimerManager().ClearTimer(ClimbTimerHandle);
+        GetCharacterMovement()->MaxFlySpeed = 200;
+    }
+
+    if (ClimbIteration > 10)
+    {
+        bFinishClimbing = false;
+        bClimbing = false;
+        ClimbIteration = 0;
+        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+        GetWorldTimerManager().ClearTimer(ClimbTimerHandle);
+        GetCharacterMovement()->MaxFlySpeed = 200;
+    }
+
+    ClimbIteration = ClimbIteration + 1;
+}
+
+void AFirstPersonCharacterBase::CheckClimbTimer()
+{
+    FHitResult Hit;
+    FVector Start = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z - 60);
+    FVector End = FVector((GetActorForwardVector() * 100) + Start);
+
+    if (AFirstPersonCharacterBase::LineTrace(Hit, Start, End))
+    {
+        bClimbing = true;
+        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
+        GetWorldTimerManager().ClearTimer(CheckClimbTimerHandle);
+        GetWorldTimerManager().SetTimer(ClimbTimerHandle, this, &AFirstPersonCharacterBase::ClimbTimer, 0.1f, true, 0.0f);
+        GetCharacterMovement()->MaxFlySpeed = 300;
+    }
+
+    if (!GetCharacterMovement()->IsFalling())
+    {
+        GetWorldTimerManager().ClearTimer(CheckClimbTimerHandle);
     }
 }
