@@ -410,7 +410,6 @@ void AFirstPersonCharacterBase::ClimbTimer()
 
     if (!LineTrace(Hit2, Start2, End2))
     {
-        GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Finished Climbing"));
         bFinishClimbing = true;
     }
 
