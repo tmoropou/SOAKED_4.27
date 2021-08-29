@@ -370,6 +370,7 @@ FVector AFirstPersonCharacterBase::CalculateFloorInfluence(FVector FloorNormal)
     return FVector();
 }
 
+// Slow down player if approaching terminal velocity or end slide if slowed to crouch speed
 void AFirstPersonCharacterBase::SlideTimer()
 {
     // GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, TEXT("Sliding"));
@@ -398,6 +399,7 @@ bool AFirstPersonCharacterBase::LineTrace(FHitResult Hit, FVector Start, FVector
     return GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, TraceParams);
 }
 
+// Fire line trace to check if still climbing or should end climb
 void AFirstPersonCharacterBase::ClimbTimer()
 {
     FHitResult Hit;
@@ -408,16 +410,14 @@ void AFirstPersonCharacterBase::ClimbTimer()
     FVector Start2 = FVector(GetActorLocation().X, GetActorLocation().Y, GetActorLocation().Z + 90);
     FVector End2 = FVector((GetActorForwardVector() * 75) + Start2);
 
+    // Check if approaching ledge
     if (!LineTrace(Hit2, Start2, End2))
     {
         bFinishClimbing = true;
     }
 
-    if (LineTrace(Hit, Start, End))
-    {
-
-    }
-    else 
+    // Check if lower half of body is above ledge to finish climb
+    if (!LineTrace(Hit, Start, End))
     {
         bFinishClimbing = false;
         bClimbing = false;
@@ -427,6 +427,7 @@ void AFirstPersonCharacterBase::ClimbTimer()
         GetCharacterMovement()->MaxFlySpeed = 200;
     }
 
+    // Allow wall climb for 10 timer iterations
     if (ClimbIteration > 10)
     {
         bFinishClimbing = false;
@@ -440,6 +441,7 @@ void AFirstPersonCharacterBase::ClimbTimer()
     ClimbIteration = ClimbIteration + 1;
 }
 
+// Fire a line trace while was sprinting and in air to check for wall
 void AFirstPersonCharacterBase::CheckClimbTimer()
 {
     FHitResult Hit;
