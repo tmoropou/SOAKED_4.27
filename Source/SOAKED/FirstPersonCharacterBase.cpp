@@ -106,6 +106,11 @@ void AFirstPersonCharacterBase::MoveRight(float Axis)
 // When the jump button is initially pressed
 void AFirstPersonCharacterBase::StartHandleJump()
 {
+    if (GetCharacterMovement()->IsFlying())
+    {
+        GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+    }
+
     ACharacter::Jump();
 
     
