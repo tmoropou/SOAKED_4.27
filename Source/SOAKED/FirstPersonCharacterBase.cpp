@@ -23,6 +23,8 @@ AFirstPersonCharacterBase::AFirstPersonCharacterBase()
     ClimbHeight->SetupAttachment(GetCapsuleComponent());
 
     CurrentMovementState = MovementState::Walking;
+
+    bReplicates = true;
 }
 
 // Called when the game starts or when spawned
@@ -43,6 +45,11 @@ void AFirstPersonCharacterBase::BeginPlay()
 void AFirstPersonCharacterBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+void AFirstPersonCharacterBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const {
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(AFirstPersonCharacterBase, CurrentMovementState);
 }
 
 // Called to bind functionality to input

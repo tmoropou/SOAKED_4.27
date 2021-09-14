@@ -11,6 +11,7 @@
 #include "Math/Vector.h"
 #include "Math/UnrealMathUtility.h"
 #include "DrawDebugHelpers.h"
+#include "Net/UnrealNetwork.h"
 #include "MovmentStateEnum.h"
 #include "FirstPersonCharacterBase.generated.h"
 
@@ -50,7 +51,7 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components (C++)")
         USceneComponent* ClimbHeight;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Enums(C++)")
+    UPROPERTY(Replicated, EditAnywhere, BlueprintReadWrite, Category = "Enums(C++)")
         TEnumAsByte<MovementState> CurrentMovementState;
         TEnumAsByte<MovementState> PreviousMovementState;
 
